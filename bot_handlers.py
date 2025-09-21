@@ -117,6 +117,26 @@ async def rates_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='Markdown'
     )
 
+async def safe_edit_message(query, text, reply_markup=None, parse_mode=None):
+    """Безопасное редактирование сообщения с проверкой на дублирование"""
+    try:
+        await query.edit_message_text(
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode
+        )
+    except Exception as e:
+        if "Message is not modified" in str(e):
+            # Сообщение идентично - игнорируем ошибку
+            pass
+        else:
+            # Другая ошибка - пробуем отправить новое сообщение
+            await query.message.reply_text(
+                text=text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode
+            )
+
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка callback запросов"""
     query = update.callback_query
@@ -129,14 +149,16 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Главное меню
         if data == 'back_main':
-            await query.edit_message_text(
+            await safe_edit_message(
+                query,
                 MESSAGES['welcome'],
                 reply_markup=KeyboardBuilder.main_menu()
             )
         
         # Конвертация
         elif data == 'convert':
-            await query.edit_message_text(
+            await safe_edit_message(
+                query,
                 MESSAGES['select_from_currency'],
                 reply_markup=KeyboardBuilder.currency_type_selection()
             )
@@ -202,7 +224,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     except Exception as e:
         logging.error(f"Ошибка в handle_callback: {e}")
-        await query.edit_message_text("❌ Произошла ошибка. Попробуйте позже.")
+        try:
+            await query.edit_message_text("❌ Произошла ошибка. Попробуйте позже.")
+        except Exception:
+            # Если не удается изменить сообщение, отправляем новое
+            await query.message.reply_text("❌ Произошла ошибка. Попробуйте позже.")
 
 async def handle_currency_type_selection(query, data: str, user_info: Dict):
     """Обработка выбора типа валюты"""
@@ -217,7 +243,7 @@ async def handle_currency_type_selection(query, data: str, user_info: Dict):
         keyboard = KeyboardBuilder.crypto_currencies(action)
         text = "₿ Выберите криптовалюту:"
     
-    await query.edit_message_text(text, reply_markup=keyboard)
+    await safe_edit_message(query, text, reply_markup=keyboard)
 
 async def handle_currency_selection(query, data: str, user_info: Dict):
     """Обработка выбора валюты"""
