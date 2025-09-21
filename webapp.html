@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Валютный конвертер</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .converter-card {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+        }
+
+        .currency-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 15px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .currency-selector:hover {
+            border-color: var(--tg-theme-link-color, #2196F3);
+        }
+
+        .currency-flag {
+            font-size: 24px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--tg-theme-hint-color, #f0f0f0);
+            border-radius: 50%;
+        }
+
+        .currency-info {
+            flex: 1;
+        }
+
+        .currency-code {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .currency-name {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .amount-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid var(--tg-theme-hint-color, #e0e0e0);
+            border-radius: 15px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s ease;
+        }
+
+        .amount-input:focus {
+            outline: none;
+            border-color: var(--tg-theme-link-color, #2196F3);
+        }
+
+        .swap-button {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tg-theme-button-color, #2196F3);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .swap-button:hover {
+            transform: translateX(-50%) rotate(180deg);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+        }
+
+        .converter-middle {
+            position: relative;
+            margin: 20px 0;
+            height: 1px;
+            background: var(--tg-theme-hint-color, #e0e0e0);
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .result-amount {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .result-rate {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .quick-amounts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-amount-btn {
+            padding: 12px;
+            background: var(--tg-theme-button-color, #2196F3);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quick-amount-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+        }
+
+        .rates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .rate-card {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+            transition: transform 0.3s ease;
+        }
+
+        .rate-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .rate-currency {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .rate-code {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .rate-value {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .rate-change {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .rate-change.positive {
+            color: #4CAF50;
+        }
+
+        .rate-change.negative {
+            color: #f44336;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .tab.active {
+            background: var(--tg-theme-button-color, #2196F3);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--tg-theme-hint-color, #f3f3f3);
+            border-top: 4px solid var(--tg-theme-button-color, #2196F3);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: var(--tg-theme-hint-color, #999999);
+            font-size: 12px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .result-amount {
+                font-size: 24px;
+            }
+            
+            .quick-amounts {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💱 Валютный конвертер</h1>
+            <p>Быстрая конвертация фиат и криптовалют</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="converter">Конвертер</button>
+            <button class="tab" data-tab="rates">Курсы</button>
+            <button class="tab" data-tab="trending">Популярные</button>
+        </div>
+
+        <!-- Конвертер -->
+        <div id="converter" class="tab-content">
+            <div class="converter-card">
+                <div class="currency-selector" id="fromCurrency">
+                    <div class="currency-flag">🇺🇸</div>
+                    <div class="currency-info">
+                        <div class="currency-code">USD</div>
+                        <div class="currency-name">Доллар США</div>
+                    </div>
+                </div>
+
+                <input type="number" 
+                       class="amount-input" 
+                       id="amountInput" 
+                       placeholder="Введите сумму" 
+                       value="100">
+
+                <div class="quick-amounts">
+                    <button class="quick-amount-btn" data-amount="1">1</button>
+                    <button class="quick-amount-btn" data-amount="10">10</button>
+                    <button class="quick-amount-btn" data-amount="100">100</button>
+                    <button class="quick-amount-btn" data-amount="1000">1K</button>
+                    <button class="quick-amount-btn" data-amount="5000">5K</button>
+                    <button class="quick-amount-btn" data-amount="10000">10K</button>
+                </div>
+
+                <div class="converter-middle">
+                    <button class="swap-button" id="swapButton">🔄</button>
+                </div>
+
+                <div class="currency-selector" id="toCurrency">
+                    <div class="currency-flag">🇪🇺</div>
+                    <div class="currency-info">
+                        <div class="currency-code">EUR</div>
+                        <div class="currency-name">Евро</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-card" id="resultCard">
+                <div class="result-amount" id="resultAmount">85.50 EUR</div>
+                <div class="result-rate" id="resultRate">1 USD = 0.855 EUR</div>
+            </div>
+        </div>
+
+        <!-- Курсы валют -->
+        <div id="rates" class="tab-content hidden">
+            <div class="tabs">
+                <button class="tab active" data-type="fiat">Фиат</button>
+                <button class="tab" data-type="crypto">Крипто</button>
+            </div>
+            
+            <div id="ratesContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Загрузка курсов...
+                </div>
+            </div>
+        </div>
+
+        <!-- Популярные валюты -->
+        <div id="trending" class="tab-content hidden">
+            <div class="tabs">
+                <button class="tab active" data-trend="gainers">Растущие</button>
+                <button class="tab" data-trend="losers">Падающие</button>
+                <button class="tab" data-trend="popular">ТОП</button>
+            </div>
+            
+            <div id="trendingContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Загрузка данных...
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Данные обновляются каждые 15 минут<br>
+            Источники: ExchangeRate-API, CoinGecko
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Telegram Web App
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Применяем тему Telegram
+        document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+        document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#999999');
+        document.documentElement.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color || '#2196F3');
+        document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#2196F3');
+        document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f8f9fa');
+
+        // Данные валют
+        const currencies = {
+            fiat: {
+                'USD': { name: 'Доллар США', flag: '🇺🇸', symbol: '$' },
+                'EUR': { name: 'Евро', flag: '🇪🇺', symbol: '€' },
+                'RUB': { name: 'Российский рубль', flag: '🇷🇺', symbol: '₽' },
+                'GBP': { name: 'Британский фунт', flag: '🇬🇧', symbol: '£' },
+                'JPY': { name: 'Японская йена', flag: '🇯🇵', symbol: '¥' },
+                'CNY': { name: 'Китайский юань', flag: '🇨🇳', symbol: '¥' },
+                'CAD': { name: 'Канадский доллар', flag: '🇨🇦', symbol: 'C$' },
+                'AUD': { name: 'Австралийский доллар', flag: '🇦🇺', symbol: 'A$' },
+                'CHF': { name: 'Швейцарский франк', flag: '🇨🇭', symbol: 'CHF' }
+            },
+            crypto: {
+                'BTC': { name: 'Bitcoin', icon: '₿' },
+                'ETH': { name: 'Ethereum', icon: 'Ξ' },
+                'BNB': { name: 'Binance Coin', icon: '🪙' },
+                'ADA': { name: 'Cardano', icon: '🔺' },
+                'SOL': { name: 'Solana', icon: '◎' },
+                'XRP': { name: 'XRP', icon: '💧' },
+                'DOT': { name: 'Polkadot', icon: '●' },
+                'DOGE': { name: 'Dogecoin', icon: '🐕' }
+            }
+        };
+
+        let currentData = {
+            from: 'USD',
+            to: 'EUR',
+            amount: 100,
+            rates: {},
+            cryptoRates: {}
+        };
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            loadRates();
+        });
+
+        function initializeApp() {
+            // Обработчики вкладок
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    switchTab(this.dataset.tab || this.dataset.type || this.dataset.trend);
+                });
+            });
+
+            // Обработчик кнопки обмена валют
+            document.getElementById('swapButton').addEventListener('click', swapCurrencies);
+
+            // Обработчик ввода суммы
+            document.getElementById('amountInput').addEventListener('input', function() {
+                currentData.amount = parseFloat(this.value) || 0;
+                updateConversion();
+            });
+
+            // Обработчики быстрых сумм
+            document.querySelectorAll('.quick-amount-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const amount = this.dataset.amount.includes('K') ? 
+                        parseFloat(this.dataset.amount) * 1000 : 
+                        parseFloat(this.dataset.amount);
+                    
+                    document.getElementById('amountInput').value = amount;
+                    currentData.amount = amount;
+                    updateConversion();
+                });
+            });
+
+            // Обработчики выбора валют
+            document.getElementById('fromCurrency').addEventListener('click', () => showCurrencySelector('from'));
+            document.getElementById('toCurrency').addEventListener('click', () => showCurrencySelector('to'));
+        }
+
+        function switchTab(tabName) {
+            // Скрываем все вкладки
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // Убираем активный класс у всех вкладок
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Показываем нужную вкладку
+            if (tabName === 'converter') {
+                document.getElementById('converter').classList.remove('hidden');
+                document.querySelector('[data-tab="converter"]').classList.add('active');
+            } else if (tabName === 'rates') {
+                document.getElementById('rates').classList.remove('hidden');
+                document.querySelector('[data-tab="rates"]').classList.add('active');
+                loadRatesTab('fiat');
+            } else if (tabName === 'trending') {
+                document.getElementById('trending').classList.remove('hidden');
+                document.querySelector('[data-tab="trending"]').classList.add('active');
+                loadTrendingTab('gainers');
+            } else if (tabName === 'fiat' || tabName === 'crypto') {
+                loadRatesTab(tabName);
+                document.querySelector(`[data-type="${tabName}"]`).classList.add('active');
+                document.querySelector(`[data-type="${tabName === 'fiat' ? 'crypto' : 'fiat'}"]`).classList.remove('active');
+            } else if (['gainers', 'losers', 'popular'].includes(tabName)) {
+                loadTrendingTab(tabName);
+                document.querySelector(`[data-trend="${tabName}"]`).classList.add('active');
+                document.querySelectorAll('[data-trend]').forEach(tab => {
+                    if (tab.dataset.trend !== tabName) {
+                        tab.classList.remove('active');
+                    }
+                });
+            }
+        }
+
+        async function loadRates() {
+            try {
+                // Загружаем фиатные курсы
+                const fiatResponse = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                const fiatData = await fiatResponse.json();
+                currentData.rates = fiatData.rates;
+
+                // Загружаем криптокурсы
+                const cryptoResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,cardano,solana,ripple,polkadot,dogecoin&vs_currencies=usd&include_24hr_change=true');
+                const cryptoData = await cryptoResponse.json();
+                currentData.cryptoRates = cryptoData;
+
+                updateConversion();
+            } catch (error) {
+                console.error('Ошибка загрузки курсов:', error);
+                showError('Ошибка загрузки курсов валют');
+            }
+        }
+
+        function updateConversion() {
+            if (!currentData.rates || !currentData.amount) return;
+
+            let rate = 1;
+            let result = currentData.amount;
+
+            // Определяем курс конвертации
+            if (currentData.from === 'USD') {
+                rate = currentData.rates[currentData.to] || 1;
+            } else if (currentData.to === 'USD') {
+                rate = 1 / (currentData.rates[currentData.from] || 1);
+            } else {
+                const usdFromRate = 1 / (currentData.rates[currentData.from] || 1);
+                const usdToRate = currentData.rates[currentData.to] || 1;
+                rate = usdFromRate * usdToRate;
+            }
+
+            result = currentData.amount * rate;
+
+            // Обновляем отображение
+            const resultAmount = document.getElementById('resultAmount');
+            const resultRate = document.getElementById('resultRate');
+            
+            const toSymbol = currencies.fiat[currentData.to]?.symbol || currentData.to;
+            const fromSymbol = currencies.fiat[currentData.from]?.symbol || currentData.from;
+
+            resultAmount.textContent = `${result.toFixed(2)} ${currentData.to}`;
+            resultRate.textContent = `1 ${currentData.from} = ${rate.toFixed(4)} ${currentData.to}`;
+        }
+
+        function swapCurrencies() {
+            const temp = currentData.from;
+            currentData.from = currentData.to;
+            currentData.to = temp;
+
+            updateCurrencyDisplay();
+            updateConversion();
+        }
+
+        function updateCurrencyDisplay() {
+            const fromCurrency = document.getElementById('fromCurrency');
+            const toCurrency = document.getElementById('toCurrency');
+
+            const fromData = currencies.fiat[currentData.from];
+            const toData = currencies.fiat[currentData.to];
+
+            if (fromData) {
+                fromCurrency.querySelector('.currency-flag').textContent = fromData.flag;
+                fromCurrency.querySelector('.currency-code').textContent = currentData.from;
+                fromCurrency.querySelector('.currency-name').textContent = fromData.name;
+            }
+
+            if (toData) {
+                toCurrency.querySelector('.currency-flag').textContent = toData.flag;
+                toCurrency.querySelector('.currency-code').textContent = currentData.to;
+                toCurrency.querySelector('.currency-name').textContent = toData.name;
+            }
+        }
+
+        function showCurrencySelector(type) {
+            // Простой селектор валют через prompt (можно расширить)
+            const currencyList = Object.keys(currencies.fiat).join(', ');
+            const selected = prompt(`Выберите валюту (${currencyList}):`);
+            
+            if (selected && currencies.fiat[selected.toUpperCase()]) {
+                currentData[type] = selected.toUpperCase();
+                updateCurrencyDisplay();
+                updateConversion();
+            }
+        }
+
+        function loadRatesTab(type) {
+            const content = document.getElementById('ratesContent');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка курсов...</div>';
+
+            setTimeout(() => {
+                let html = '<div class="rates-grid">';
+
+                if (type === 'fiat') {
+                    Object.entries(currencies.fiat).forEach(([code, data]) => {
+                        if (code !== 'USD') {
+                            const rate = currentData.rates[code] || 0;
+                            html += `
+                                <div class="rate-card">
+                                    <div class="rate-currency">${data.flag}</div>
+                                    <div class="rate-code">${code}</div>
+                                    <div class="rate-value">${rate.toFixed(4)}</div>
+                                </div>
+                            `;
+                        }
+                    });
+                } else {
+                    // Криптовалюты
+                    const cryptoMapping = {
+                        'bitcoin': 'BTC',
+                        'ethereum': 'ETH',
+                        'binancecoin': 'BNB',
+                        'cardano': 'ADA',
+                        'solana': 'SOL',
+                        'ripple': 'XRP',
+                        'polkadot': 'DOT',
+                        'dogecoin': 'DOGE'
+                    };
+
+                    Object.entries(currentData.cryptoRates).forEach(([id, data]) => {
+                        const symbol = cryptoMapping[id];
+                        const currency = currencies.crypto[symbol];
+                        if (currency) {
+                            const change = data.usd_24h_change || 0;
+                            const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : '';
+                            
+                            html += `
+                                <div class="rate-card">
+                                    <div class="rate-currency">${currency.icon}</div>
+                                    <div class="rate-code">${symbol}</div>
+                                    <div class="rate-value">$${data.usd.toLocaleString()}</div>
+                                    <div class="rate-change ${changeClass}">${change > 0 ? '+' : ''}${change.toFixed(2)}%</div>
+                                </div>
+                            `;
+                        }
+                    });
+                }
+
+                html += '</div>';
+                content.innerHTML = html;
+            }, 500);
+        }
+
+        function loadTrendingTab(type) {
+            const content = document.getElementById('trendingContent');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div>Загрузка данных...</div>';
+
+            setTimeout(() => {
+                let html = '<div class="rates-grid">';
+
+                // Имитируем данные трендов
+                const trendingData = [
+                    { symbol: 'BTC', icon: '₿', price: 45000, change: 5.2 },
+                    { symbol: 'ETH', icon: 'Ξ', price: 3200, change: 3.8 },
+                    { symbol: 'BNB', icon: '🪙', price: 420, change: 2.1 },
+                    { symbol: 'SOL', icon: '◎', price: 180, change: 7.5 },
+                    { symbol: 'ADA', icon: '🔺', price: 1.2, change: -2.3 }
+                ];
+
+                if (type === 'losers') {
+                    trendingData.forEach(item => item.change *= -1);
+                }
+
+                trendingData
+                    .sort((a, b) => type === 'gainers' ? b.change - a.change : a.change - b.change)
+                    .slice(0, 6)
+                    .forEach((item, index) => {
+                        const changeClass = item.change > 0 ? 'positive' : 'negative';
+                        html += `
+                            <div class="rate-card">
+                                <div class="rate-currency">${item.icon}</div>
+                                <div class="rate-code">${item.symbol}</div>
+                                <div class="rate-value">$${item.price.toLocaleString()}</div>
+                                <div class="rate-change ${changeClass}">${item.change > 0 ? '+' : ''}${item.change.toFixed(2)}%</div>
+                            </div>
+                        `;
+                    });
+
+                html += '</div>';
+                content.innerHTML = html;
+            }, 500);
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.footer'));
+
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        // Отправка данных обратно в Telegram
+        function sendDataToTelegram() {
+            tg.sendData(JSON.stringify({
+                action: 'convert',
+                from: currentData.from,
+                to: currentData.to,
+                amount: currentData.amount
+            }));
+        }
+
+        // Обработчик главной кнопки Telegram
+        tg.MainButton.text = "Отправить в чат";
+        tg.MainButton.show();
+        tg.MainButton.onClick(sendDataToTelegram);
+    </script>
+</body>
+</html>
